@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>কয়েন ইনকাম অ্যাপ</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mut:#6b7380;--pri:#0f766e;--pt:#fff;--bd:#e3e6ea;--warn:#b45309}
+@media(prefers-color-scheme:dark){:root{--bg:#14171b;--card:#1d2127;--tx:#eceff3;--mut:#9aa3af;--pri:#2dd4bf;--pt:#06201d;--bd:#2c323a;--warn:#fbbf24}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,"Noto Sans Bengali",sans-serif;padding:env(safe-area-inset-top) 0 80px}
+main{max-width:560px;margin:0 auto;padding:14px}
+.card,.stat{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;margin:10px 0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+h2{margin:6px 0}h3{margin:0 0 4px;font-size:16px}
+input,select{width:100%;padding:10px;margin:5px 0;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font-size:16px}
+button{background:var(--pri);color:var(--pt);border:0;border-radius:8px;padding:10px 14px;font-size:15px;font-weight:600}
+button.sec{background:none;color:var(--pri);border:1px solid var(--pri)}button[disabled]{opacity:.45}
+.mut{color:var(--mut);font-size:14px}.warn{color:var(--warn);font-size:14px}a{color:var(--pri);font-weight:600}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;color:var(--mut);border-radius:0;padding:10px 2px;font-size:13px;line-height:1.2}nav button.on{color:var(--pri);border-top:2px solid var(--pri)}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd);color:var(--mut)}.gold{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#3b2400;border:0;font-weight:700}
+.hero{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;border-radius:16px;padding:14px}
+.av{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700}
+.hc{margin-left:auto;font-size:26px;font-weight:700;text-align:right;line-height:1.1}.hc small{display:block;font-size:12px;font-weight:400}
+.go{display:block;text-align:center;margin:10px 0;padding:12px;border-radius:10px;background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;text-decoration:none}
+.up{display:block;text-align:center;padding:16px;border:2px dashed var(--pri);border-radius:10px;color:var(--pri);font-weight:600;margin:8px 0;word-break:break-all}
+.lb{display:block;font-size:14px;font-weight:600;margin-top:8px}
+.bar{height:10px;background:var(--bd);border-radius:99px;overflow:hidden;margin:8px 0 4px}.bar i{display:block;height:100%;background:linear-gradient(90deg,#0f766e,#14b8a6)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{text-align:center;margin:0}.stat b{display:block;font-size:22px;color:var(--pri)}
+.pay{border:1px dashed var(--pri);border-radius:8px;padding:10px;margin:8px 0;font-size:14px}
+</style></head><body><main id="app"></main><nav id="nav"></nav>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{getFirestore,doc,getDoc,setDoc,addDoc,collection,query,where,getDocs,increment,writeBatch}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* ====== এখানে আপনার Firebase কনফিগ বসান ====== */
+const cfg={apiKey:"AIzaSyCkifcqMLAoR_DaY7OUJ1tDz1LrK_EmdYk",authDomain:"coinapp-916b6.firebaseapp.com",projectId:"coinapp-916b6",appId:"1:149568394408:web:3de9146a29c495e0b49e9d"};
+const PAYNUM="01601433005"; /* কয়েন কেনার টাকা যে নম্বরে নেবেন */
+const PK=[[50,400],[100,800],[200,1600],[500,4000]],REF=100;
+/* ============================================= */
+
+const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
+const $=s=>document.getElementById(s),A=$("app");
+const E=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const safe=u=>/^https?:\/\//i.test(u)?E(u):"#";
+const TY={youtube:"ইউটিউব সাবস্ক্রাইব",facebook:"ফেসবুক ফলো/লাইক",tiktok:"টিকটক ফলো/লাইক",website:"ওয়েবসাইট ভিজিট"},IC={youtube:"▶️",facebook:"📘",tiktok:"🎵",website:"🌐"};
+const ST={pending:"যাচাই চলছে",approved:"অনুমোদিত",rejected:"বাতিল",paid:"পরিশোধিত"};
+const em=p=>p+"@coinapp.bd",ph=/^01[3-9][0-9]{8}$/;
+let U=null,tab="tasks";
+const list=async(c,...w)=>(await getDocs(query(collection(db,c),...w))).docs.map(d=>({id:d.id,...d.data()}));
+const get=async(c,id)=>({id,...(await getDoc(doc(db,c,id))).data()});
+const shrink=f=>new Promise(r=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,700/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);r(c.toDataURL("image/jpeg",.6))};im.onerror=()=>r(null);im.src=fr.result};fr.readAsDataURL(f)});
+
+onAuthStateChanged(auth,async u=>{
+ if(!u){U=null;authView();return}
+ let s;for(let i=0;i<8;i++){s=await getDoc(doc(db,"users",u.uid));if(s.exists())break;await new Promise(r=>setTimeout(r,500))}
+ U={id:u.uid,...s.data()};render()});
+
+function authView(){$("nav").innerHTML="";A.innerHTML=`<h2>কয়েন ইনকাম অ্যাপ</h2>
+<div class="card"><h3>লগইন</h3><input id="lp" type="tel" placeholder="ফোন নম্বর"><input id="lw" type="password" placeholder="পাসওয়ার্ড"><button onclick="login()">লগইন</button></div>
+<div class="card"><h3>নতুন অ্যাকাউন্ট</h3><input id="sn" placeholder="নাম"><input id="sp" type="tel" maxlength="11" placeholder="ফোন নম্বর"><input id="sw" type="password" placeholder="পাসওয়ার্ড (কমপক্ষে ৬)"><input id="sr" placeholder="রেফার কোড (ঐচ্ছিক)"><button onclick="signup()">অ্যাকাউন্ট খুলুন</button></div>`}
+async function login(){try{await signInWithEmailAndPassword(auth,em($("lp").value.trim()),$("lw").value)}catch(e){alert("ফোন নম্বর বা পাসওয়ার্ড ভুল")}}
+async function signup(){const n=$("sn").value.trim(),p=$("sp").value.trim(),w=$("sw").value,r=$("sr").value.trim().toUpperCase();
+ if(!n||!ph.test(p)||w.length<6){alert("নাম, ১১ ডিজিটের নম্বর ও ৬+ অক্ষরের পাসওয়ার্ড দিন");return}
+ try{const c=await createUserWithEmailAndPassword(auth,em(p),w);
+  await setDoc(doc(db,"users",c.user.uid),{name:n,phone:p,coins:0,role:"user",code:c.user.uid.slice(0,6).toUpperCase(),refBy:r,refPaid:false,joined:new Date().toLocaleDateString("bn-BD")})}
+ catch(e){alert(e.code=="auth/email-already-in-use"?"এই নম্বরে অ্যাকাউন্ট আছে":"সমস্যা: "+e.code)}}
+const logout=()=>confirm("লগআউট করবেন?")&&signOut(auth);
+const setTab=t=>{tab=t;render()};
+
+async function render(){
+ const T=[["tasks","🏠<br>টাস্ক"],["post","➕<br>পোস্ট"],["wallet","👛<br>ওয়ালেট"],["profile","👤<br>প্রোফাইল"]];if(U.role=="admin")T.push(["admin","🛠️<br>অ্যাডমিন"]);
+ $("nav").innerHTML=T.map(t=>`<button class="${tab==t[0]?"on":""}" onclick="setTab('${t[0]}')">${t[1]}</button>`).join("");
+ const h=`<div class="hero"><div class="av">${E(U.name[0])}</div><div><b>${E(U.name)}</b><div style="opacity:.85;font-size:13px">${E(U.phone)}</div></div><div class="hc">${U.coins}<small>কয়েন</small></div></div>`;
+ A.innerHTML=h+'<p class="mut">লোড হচ্ছে...</p>';
+ try{A.innerHTML=h+await V[tab]()}catch(e){A.innerHTML=h+`<p class="warn">ত্রুটি: ${E(e.code||e.message)}</p>`}}
+const reload=async()=>{U=await get("users",U.id);render()};
+
+const V={
+async tasks(){const[ts,ss]=await Promise.all([list("tasks",where("status","==","approved")),list("subs",where("uid","==",U.id))]);
+ const m=Object.fromEntries(ss.map(s=>[s.task,s]));let o="<h3>উপলব্ধ টাস্ক</h3>",n=0;
+ ts.filter(t=>t.left>0&&t.owner!=U.id).forEach(t=>{n++;const s=m[t.id];
+  o+=`<div class="card"><div class="row"><h3>${IC[t.type]} ${TY[t.type]}</h3><span class="tag gold">+${t.reward} কয়েন</span></div><div class="mut">বাকি: ${t.left} জন</div><a class="go" href="${safe(t.link)}" target="_blank" rel="noopener">লিংক খুলে কাজটি করুন ↗</a>`+
+  (s?`<p class="mut">অবস্থা: ${ST[s.status]}</p>`:`<label class="up" for="fi${t.id}" id="ul${t.id}">📷 স্ক্রিনশট আপলোড করুন</label><input id="fi${t.id}" type="file" accept="image/*" style="display:none" onchange="pick('${t.id}')"><input id="pf${t.id}" placeholder="নোট (ঐচ্ছিক)"><button onclick="submitTask('${t.id}')">জমা দিন</button>`)+"</div>"});
+ return o+(n?"":'<p class="mut">এখন কোনো টাস্ক নেই।</p>')},
+async post(){const my=await list("tasks",where("owner","==",U.id));
+ let o=`<div class="card"><h3>টাস্ক পোস্ট করুন</h3><label class="lb">কোন ধরনের কাজ?</label><select id="ty">${Object.keys(TY).map(k=>`<option value="${k}">${TY[k]}</option>`).join("")}</select><label class="lb">লিংক</label><input id="lk" placeholder="https://..."><label class="lb">প্রতি জনকে কত কয়েন দেবেন?</label><input id="rw" type="number" oninput="pc()"><label class="lb">কতজন লাগবে?</label><input id="ct" type="number" oninput="pc()"><div id="pcm" class="mut" style="min-height:24px"></div><button onclick="postTask()">পোস্ট করুন</button></div>`;
+ if(my.length){o+="<h3>আমার পোস্ট করা টাস্ক</h3>";my.forEach(t=>{const p=Math.round(t.done*100/t.total),l=t.status=="pending"?"অনুমোদনের অপেক্ষায়":t.status=="rejected"?"বাতিল":t.done>=t.total?"সম্পন্ন":"চলছে";
+  o+=`<div class="card"><div class="row"><h3>${IC[t.type]} ${TY[t.type]}</h3><span class="tag">${l}</span></div>`+(t.status=="approved"?`<div class="bar"><i style="width:${p}%"></i></div><div class="row mut"><span>${t.done}/${t.total} জন সম্পন্ন</span><b>${p}%</b></div>`:"")+"</div>"})}
+ return o},
+async wallet(){const[bs,ws]=await Promise.all([list("buys",where("uid","==",U.id)),list("wds",where("uid","==",U.id))]);
+ let o=`<div class="card"><div class="mut">আপনার ব্যালেন্স</div><div style="font-size:30px;font-weight:700;color:var(--pri)">${U.coins} কয়েন</div><div class="mut">= ${U.coins/10} টাকা · ১০ কয়েন = ১ টাকা</div></div>
+<div class="card"><h3>🪙 কয়েন কিনুন</h3><p class="mut">১ টাকা = ৮ কয়েন। এই নম্বরে সেন্ড মানি করে TrxID দিন।</p><div class="pay">বিকাশ / নগদ / রকেট: <b>${E(PAYNUM)}</b></div><select id="bp">${PK.map((p,i)=>`<option value="${i}">${p[0]} টাকা → ${p[1]} কয়েন</option>`).join("")}</select><select id="bm"><option>বিকাশ</option><option>নগদ</option><option>রকেট</option></select><input id="bn" type="tel" maxlength="11" placeholder="যে নম্বর থেকে পাঠিয়েছেন"><input id="bt" placeholder="TrxID"><button onclick="buy()">কেনার অনুরোধ পাঠান</button></div>
+<div class="card"><h3>উইথড্র</h3>${U.coins<100?`<p class="warn">কমপক্ষে ১০০ কয়েন লাগবে। আপনার আছে ${U.coins}।</p>`:""}<select id="wm"><option>বিকাশ</option><option>নগদ</option><option>রকেট</option></select><input id="wn" type="tel" maxlength="11" value="${E(U.phone)}"><input id="wc" type="number" placeholder="কয়েন (কমপক্ষে ১০০)" oninput="wcalc()"><div id="wmsg" class="mut" style="min-height:22px"></div><button onclick="withdraw()" ${U.coins<100?"disabled":""}>অনুরোধ পাঠান</button></div>`;
+ bs.forEach(b=>o+=`<div class="card row"><span>কেনা: ${b.tk} টাকা → ${b.coins} কয়েন</span><span class="tag">${b.status=="approved"?"যোগ হয়েছে":ST[b.status]}</span></div>`);
+ ws.forEach(w=>o+=`<div class="card row"><span>উইথড্র: ${w.m} · ${w.tk} টাকা</span><span class="tag">${ST[w.status]}</span></div>`);return o},
+async profile(){const[ss,ws,ts]=await Promise.all([list("subs",where("uid","==",U.id)),list("wds",where("uid","==",U.id)),list("tasks",where("owner","==",U.id))]);
+ const dn=ss.filter(s=>s.status=="approved").length,pn=ss.filter(s=>s.status=="pending").length,tk=ws.filter(w=>w.status=="paid").reduce((a,w)=>a+w.tk,0);
+ return `<div class="grid" style="margin:10px 0"><div class="stat"><b>${dn}</b>সম্পন্ন টাস্ক</div><div class="stat"><b>${pn}</b>যাচাই চলছে</div><div class="stat"><b>${ts.length}</b>পোস্ট করা</div><div class="stat"><b>${tk}৳</b>পেয়েছেন</div></div>
+<div class="card"><h3>অ্যাকাউন্ট</h3><div class="mut">নাম: ${E(U.name)}</div><div class="mut">ফোন: ${E(U.phone)}</div><div class="mut">যোগ দিয়েছেন: ${E(U.joined||"—")}</div></div>
+<div class="card"><h3>আপনার রেফার কোড</h3><div style="font-size:28px;font-weight:700;color:var(--pri)">${U.code}</div><p class="mut">বন্ধু এই কোড দিয়ে সাইন আপ করলে অ্যাডমিন যাচাই করে বোনাস দেবে।</p></div>
+<button class="sec" style="width:100%" onclick="logout()">🚪 লগআউট</button>`},
+async admin(){const[ss,ts,bs,ws,us]=await Promise.all([list("subs",where("status","==","pending")),list("tasks",where("status","==","pending")),list("buys",where("status","==","pending")),list("wds",where("status","==","pending")),list("users",where("refPaid","==",false))]);
+ const bt=(f,id)=>`<div class="row"><button onclick="${f}('${id}',true)">অনুমোদন</button><button class="sec" onclick="${f}('${id}',false)">বাতিল</button></div>`;
+ let o="<h3>প্রুফ যাচাই</h3>";ss.forEach(s=>o+=`<div class="card"><div class="mut">${E(s.name)} · ${E(s.proof||"—")}</div>${String(s.img).startsWith("data:image/")?`<img src="${s.img}" style="width:100%;border-radius:8px;margin:8px 0">`:""}${bt("subOk",s.id)}</div>`);
+ o+="<h3>নতুন টাস্ক</h3>";ts.forEach(t=>o+=`<div class="card"><div class="mut">${E(t.ownerName)} · ${TY[t.type]} · ${t.reward}×${t.total} = ${t.reward*t.total} কয়েন</div><div class="mut" style="word-break:break-all">${E(t.link)}</div>${bt("taskOk",t.id)}</div>`);
+ o+="<h3>কয়েন কেনার অনুরোধ</h3><p class='mut'>বিকাশ/নগদে টাকা এসেছে কিনা মিলিয়ে অনুমোদন দিন।</p>";bs.forEach(b=>o+=`<div class="card"><div class="mut">${E(b.name)} · ${E(b.m)} ${E(b.num)} · TrxID ${E(b.id)}</div><div class="mut">${b.tk} টাকা → ${b.coins} কয়েন</div>${bt("buyOk",b.id)}</div>`);
+ o+="<h3>উইথড্র</h3><p class='mut'>আগে টাকা পাঠান, তারপর অনুমোদন চাপুন (কয়েন তখন কাটা হবে)।</p>";ws.forEach(w=>o+=`<div class="card"><div class="mut">${E(w.name)} · ${E(w.m)} ${E(w.num)} · ${w.tk} টাকা (${w.c} কয়েন)</div>${bt("wdOk",w.id)}</div>`);
+ o+="<h3>রেফার বোনাস</h3>";for(const u of us.filter(u=>u.refBy)){const r=(await list("users",where("code","==",u.refBy)))[0];if(r)o+=`<div class="card"><div class="mut">${E(u.name)} এসেছে ${E(r.name)} এর কোডে</div><button onclick="refPay('${u.id}','${r.id}')">${REF} কয়েন বোনাস দিন</button></div>`}
+ return o}};
+
+function pick(id){const f=$("fi"+id).files[0];$("ul"+id).textContent=f?"✅ "+f.name:"📷 স্ক্রিনশট আপলোড করুন"}
+async function submitTask(id){const f=$("fi"+id).files[0];if(!f){alert("স্ক্রিনশট আপলোড করুন");return}
+ const img=await shrink(f);if(!img){alert("ছবি পড়া যায়নি");return}
+ try{await setDoc(doc(db,"subs",id+"_"+U.id),{task:id,uid:U.id,name:U.name,proof:$("pf"+id).value.trim(),img,status:"pending"})}catch(e){alert("আগেই জমা দিয়েছেন বা সমস্যা হয়েছে");}render()}
+function pc(){const r=+$("rw").value||0,c=+$("ct").value||0,m=$("pcm");if(!r||!c){m.textContent="";return}const x=r*c;
+ if(x>U.coins){m.className="warn";m.innerHTML=`মোট খরচ ${x} কয়েন। আপনার আছে ${U.coins}, আরও ${x-U.coins} দরকার। <a href="#" onclick="setTab('wallet');return false">কয়েন কিনুন</a>`}else{m.className="mut";m.textContent=`মোট খরচ ${x} কয়েন (ব্যালেন্স ${U.coins})`}}
+async function postTask(){const r=parseInt($("rw").value),c=parseInt($("ct").value),l=$("lk").value.trim();
+ if(!/^https?:\/\//i.test(l)||!(r>0)||!(c>0)){alert("সঠিক লিংক (https://...), কয়েন ও সংখ্যা দিন");return}
+ if(r*c>U.coins){alert(`কয়েন কম। দরকার ${r*c}, আছে ${U.coins}। ওয়ালেট থেকে কয়েন কিনুন`);return}
+ await addDoc(collection(db,"tasks"),{owner:U.id,ownerName:U.name,type:$("ty").value,link:l,reward:r,total:c,left:c,done:0,status:"pending"});
+ alert("টাস্ক জমা হয়েছে। অ্যাডমিন অনুমোদন করলে কয়েন কাটা হবে ও টাস্ক শুরু হবে।");render()}
+async function buy(){const p=PK[+$("bp").value],n=$("bn").value.trim(),t=$("bt").value.trim().toUpperCase().replace(/[^A-Z0-9]/g,"");
+ if(!ph.test(n)||t.length<6){alert("সঠিক নম্বর ও TrxID দিন");return}
+ try{await setDoc(doc(db,"buys",t),{uid:U.id,name:U.name,tk:p[0],coins:p[1],m:$("bm").value,num:n,status:"pending"});alert("অনুরোধ পাঠানো হয়েছে। টাকা যাচাই হলে কয়েন যোগ হবে।")}catch(e){alert("এই TrxID আগেই ব্যবহার হয়েছে")}render()}
+function wcalc(){const c=+$("wc").value||0,m=$("wmsg");if(!c){m.textContent="";return}
+ if(c>U.coins){m.className="warn";m.textContent=`ব্যালেন্সে এত কয়েন নেই। আপনার আছে ${U.coins}`}else if(c<100){m.className="warn";m.textContent="কমপক্ষে ১০০ কয়েন লাগবে"}else{m.className="mut";m.textContent=`${c} কয়েন = ${c/10} টাকা পাবেন`}}
+async function withdraw(){const c=parseInt($("wc").value),n=$("wn").value.trim();
+ if(!ph.test(n)){alert("সঠিক ১১ ডিজিটের নম্বর দিন");return}if(!(c>=100)||c>U.coins){alert("কমপক্ষে ১০০ কয়েন এবং ব্যালেন্সের মধ্যে দিন");return}
+ await addDoc(collection(db,"wds"),{uid:U.id,name:U.name,m:$("wm").value,num:n,c,tk:c/10,status:"pending"});alert("অনুরোধ পাঠানো হয়েছে");render()}
+
+async function subOk(id,ok){const s=await get("subs",id),b=writeBatch(db);b.update(doc(db,"subs",id),{status:ok?"approved":"rejected"});
+ if(ok){const t=await get("tasks",s.task);if(t.left<1){alert("টাস্কের কোটা শেষ");return}b.update(doc(db,"users",s.uid),{coins:increment(t.reward)});b.update(doc(db,"tasks",s.task),{left:increment(-1),done:increment(1)})}
+ await b.commit();render()}
+async function taskOk(id,ok){const t=await get("tasks",id),b=writeBatch(db);
+ if(ok){const o=await get("users",t.owner),x=t.reward*t.total;if(o.coins<x){alert("মালিকের কয়েন কম, বাতিল করা হলো");ok=false}else b.update(doc(db,"users",t.owner),{coins:increment(-x)})}
+ b.update(doc(db,"tasks",id),{status:ok?"approved":"rejected"});await b.commit();render()}
+async function buyOk(id,ok){const x=await get("buys",id),b=writeBatch(db);b.update(doc(db,"buys",id),{status:ok?"approved":"rejected"});if(ok)b.update(doc(db,"users",x.uid),{coins:increment(x.coins)});await b.commit();render()}
+async function wdOk(id,ok){const w=await get("wds",id),b=writeBatch(db);
+ if(ok){const u=await get("users",w.uid);if(u.coins<w.c){alert("ইউজারের ব্যালেন্স কম");return}b.update(doc(db,"users",w.uid),{coins:increment(-w.c)})}
+ b.update(doc(db,"wds",id),{status:ok?"paid":"rejected"});await b.commit();render()}
+async function refPay(n,r){const b=writeBatch(db);b.update(doc(db,"users",r),{coins:increment(REF)});b.update(doc(db,"users",n),{refPaid:true});await b.commit();render()}
+Object.assign(window,{setTab,login,signup,logout,pick,submitTask,pc,postTask,buy,wcalc,withdraw,subOk,taskOk,buyOk,wdOk,refPay});
+</script></body></html>
